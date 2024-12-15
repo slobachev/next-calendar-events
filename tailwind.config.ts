@@ -9,6 +9,13 @@ export default {
         './src/app/**/*.{js,ts,jsx,tsx,mdx}',
     ],
     theme: {
+        container: {
+            center: true,
+            padding: '2rem',
+            screens: {
+                '2x1': '1400px',
+            },
+        },
         extend: {
             fontFamily: {
                 sans: ['var(--font-sans)', ...fontFamily.sans],
@@ -62,5 +69,6 @@ export default {
             },
         },
     },
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     plugins: [require('tailwindcss-animate')],
 } satisfies Config;
