@@ -1,20 +1,41 @@
 'use client';
+
+import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { eventFormSchema } from '@/schema/events';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '../ui/form';
 import { Input } from '../ui/input';
-import { useForm } from 'react-hook-form';
-import { Button } from '../ui/button';
 import Link from 'next/link';
+import { Button } from '../ui/button';
 import { Textarea } from '../ui/textarea';
 import { Switch } from '../ui/switch';
-import { createEvent, updateEvent } from '@/server/actions/events';
+import { createEvent, deleteEvent, updateEvent } from '@/server/actions/events';
+import {
+    AlertDialog,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogHeader,
+    AlertDialogTrigger,
+    AlertDialogTitle,
+    AlertDialogFooter,
+    AlertDialogCancel,
+    AlertDialogAction,
+} from '../ui/alert-dialog';
+import { useTransition } from 'react';
+
 export function EventForm({
     event,
 }: {
-    event?: { id: string; name: string; description?: string; durationInMinutes: number; isActive: boolean };
+    event?: {
+        id: string;
+        name: string;
+        description?: string;
+        durationInMinutes: number;
+        isActive: boolean;
+    };
 }) {
+    const [isDeletePending, startDeleteTransition] = useTransition();
     const form = useForm<z.infer<typeof eventFormSchema>>({
         resolver: zodResolver(eventFormSchema),
         defaultValues: event ?? {
@@ -22,6 +43,7 @@ export function EventForm({
             durationInMinutes: 30,
         },
     });
+
     async function onSubmit(values: z.infer<typeof eventFormSchema>) {
         const action = event == null ? createEvent : updateEvent.bind(null, event.id);
         const data = await action(values);
@@ -32,6 +54,7 @@ export function EventForm({
             });
         }
     }
+
     return (
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="flex gap-6 flex-col">
@@ -98,10 +121,59 @@ export function EventForm({
                     )}
                 />
                 <div className="flex gap-2 justify-end">
-                    <Button asChild variant="outline">
+                    {event && (
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button
+                                    variant="destructiveGhost"
+                                    disabled={isDeletePending || form.formState.isSubmitting}
+                                >
+                                    Delete
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This action cannot be undone. This will permanently delete your this
+                                        event.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                        disabled={isDeletePending || form.formState.isSubmitting}
+                                        variant="destructive"
+                                        onClick={() => {
+                                            startDeleteTransition(async () => {
+                                                const data = await deleteEvent(event.id);
+
+                                                if (data?.error) {
+                                                    form.setError('root', {
+                                                        message: 'There was an error deleting your event',
+                                                    });
+                                                }
+                                            });
+                                        }}
+                                    >
+                                        Delete
+                                    </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    )}
+
+                    <Button
+                        disabled={isDeletePending || form.formState.isSubmitting}
+                        type="button"
+                        asChild
+                        variant="outline"
+                    >
                         <Link href="/events">Cancel</Link>
                     </Button>
-                    <Button type="submit">Save</Button>
+                    <Button disabled={isDeletePending || form.formState.isSubmitting} type="submit">
+                        Save
+                    </Button>
                 </div>
             </form>
         </Form>
